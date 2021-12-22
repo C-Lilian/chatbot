@@ -1,5 +1,14 @@
-@charset "utf-8";
+@charset "UTF-8";
 
-h1 {
-  color: red;
+#messages {
+	overflow: auto;
+	height: calc(100vh - 115px);
+}
+
+#img-list {
+	width: 70px;
+}
+
+#titreApp {
+	font-family: 'Roboto Mono', monospace;
 }
