@@ -6,7 +6,6 @@ const Bot = class {
 
   hasActions() {
     const { actions } = this.bot;
-    console.log(this.bot.id, actions.length);
     if (actions.lenght > 0) {
       this.bot.status = 1;
     }
