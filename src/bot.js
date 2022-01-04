@@ -9,6 +9,7 @@ const Bot = class {
     if (actions.lenght > 0) {
       this.bot.status = 1;
     }
+    return false;
   }
 
   findActionByValue(message) {

@@ -31,9 +31,10 @@ const Tchat = class {
     `;
   }
 
+  // Date a laquelle le message a été envoyé.
   dateSend() {
     const date = new Date();
-    const dateEnvoie = `${date.getDay()}/${date.getMonth()}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+    const dateEnvoie = `${date.getDay()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
     return dateEnvoie;
   }
 
@@ -71,15 +72,17 @@ const Tchat = class {
     const {
       name,
       avatar,
-      message
+      message,
+      status
     } = bot;
 
+    const online = this.isOnline(status);
     return `
     <div class="row">
       <div class="col-6">
         <div class="row ps-3 pt-2">
           <div class="col-1 ps-2 pe-0 pt-2">
-            <img id="img-msg" src="${avatar}" class="img-fluid rounded-circle border border-success border-2" alt="imageBot"/>
+            <img id="img-msg" src="${avatar}" class="img-fluid rounded-circle border border-${online} border-2" alt="imageBot"/>
           </div>
           <div class="col-11">
             <div class="card m-2">
@@ -129,21 +132,22 @@ const Tchat = class {
       name,
       avatar,
       countMessage,
-      status
+      status,
+      actions
     } = data;
 
-    const online = this.isOnline(status);
+    const online = this.isOnline(status, actions);
     return `
     <div data-id=${id} class="row m-1">
       <div class="col-4 my-1">
-        <img id="img-list" src="${avatar}" class="img-fluid rounded-circle border border-${online} border-2" alt="${name}"/>
+        <img id="img-list" src="${avatar}" class="img-fluid rounded-circle border border-${online[0]} border-2" alt="${name}"/>
       </div>
       <div class="col-5 pt-3">
         <div class="row">${name}</div>
-        <div class="row">#10092001</div>
+        <div class="row text-${online[0]}">${online[1]}</div>
       </div>
       <div class="col-3 pt-4">
-        <span class="badge rounded-pill bg-success">${countMessage}</span>
+        <span class="badge rounded-pill bg-${online[0]}">${countMessage}</span>
       </div>
       <hr/>
     </div>
@@ -155,6 +159,7 @@ const Tchat = class {
     return `
     <section id="bot-list" class="col-3 bg-light">
       ${this.bots.map((bot) => this.renderBot(bot.bot)).join('')}
+      ${this.allActionsInfo()}
     </section>
     `;
   }
@@ -172,20 +177,55 @@ const Tchat = class {
     `;
   }
 
-  confirmMsgSend() {
+  // Ajout de la bulle d'information.
+  allActionsInfo() {
     return `
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
-      <symbol id="check-circle-fill" fill="currentColor" viewBox="0 0 16 16">
-      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-      </symbol>
-    </svg>
-    <div class="alert alert-success d-flex align-items-center" role="alert">
-      <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Success:"><use xlink:href="#check-circle-fill"/></svg>
+    <div class="alert alert-primary" role="alert">
+      <h4 class="alert-heading"><i class="fa fa-info-circle" aria-hidden="true"></i> Information utilisation !</h4>
+      <hr>
       <div>
-        An example success alert with an icon
+        ${this.bots.map((bot) => this.allActionsPerBots(bot.bot)).join('')}
       </div>
     </div>
     `;
+  }
+
+  // Insère le nom des bots avec la préparation de la liste pour la bulle d'info.
+  allActionsPerBots(data) {
+    const {
+      name,
+      actions
+    } = data;
+
+    // console.log(`data : ${data}`);
+    if (actions.length === 0) {
+      return '';
+    }
+    return `
+      <strong>${name}</strong> possède les actions suivantes :<br>
+      <ol class="list-group list-group-flush">
+        ${this.getActions(actions)}
+      </ol>
+      <br>
+    `;
+  }
+
+  // Insère la liste pour la bulle d'info.
+  getActions(actions) {
+    let nom = '';
+    if (actions) {
+      for (let i = 0; i < actions.length; i += 1) {
+        nom += `<li class="list-group-item"> ${actions[i].name} : `;
+        for (let j = 0; j < actions[i].keywords.length; j += 1) {
+          nom += `${actions[i].keywords[j]}`;
+          if (j + 1 !== actions[i].keywords.length) {
+            nom += ', ';
+          }
+        }
+        nom += '</li>';
+      }
+    }
+    return nom;
   }
 
   // Méthode permettant l'incrémentation des badges des bots.
@@ -194,6 +234,7 @@ const Tchat = class {
     badge.textContent = parseInt(badge.textContent, 10) + 1;
   }
 
+  // Lorsqu'un message est envoyé cette fonction est appelé.
   sendMessage() {
     const messagesEl = document.querySelector('#messages');
     const inputEl = document.querySelector('#message-input input');
@@ -215,22 +256,32 @@ const Tchat = class {
     });
   }
 
+  // Création des bots via le fichier du mm nom.
   createBots(bots) {
     return bots.map((bot) => new Bot(bot));
   }
 
+  // Si le message envoyé fait partie des actions des bots
+  // Alors on affiche la réponse selon les bots
+  // + On incrémente le badge.
   searchActionByBot(value) {
     const messagesEl = document.querySelector('#messages');
     // filter renvoie que si la val est vrai
     const bots = this.bots.map((bot) => {
       const message = bot.findActionByValue(value);
-      const { id, name, avatar } = bot.bot;
+      const {
+        id,
+        name,
+        avatar,
+        status
+      } = bot.bot;
       if (message) {
         return {
           id,
           name,
           avatar,
-          message
+          message,
+          status
         };
       }
       return false;
@@ -245,11 +296,12 @@ const Tchat = class {
     });
   }
 
-  isOnline(status) {
-    if (status === 1) {
-      return 'success';
+  // Si le bot a un status === 1 ou qu'il possède des actions alors on met son cercle en vert.
+  isOnline(status, actions) {
+    if ((status === 1) || (actions.length !== 0)) {
+      return ['success', 'online'];
     }
-    return 'danger';
+    return ['danger', 'offline'];
   }
 
   // Méthode permettant le lancement.
@@ -258,9 +310,6 @@ const Tchat = class {
     this.el.innerHTML += this.renderContainer();
 
     this.sendMessage();
-    // Permet d'incrémenter les badges.
-    // const els = document.querySelectorAll('#bot-list > div');
-    // this.addCountMessage(els[0]);
   }
 };
 

@@ -5,6 +5,11 @@
 	height: calc(100vh - 115px);
 }
 
+#bot-list {
+	overflow: auto;
+	height: calc(100vh - 50px);
+}
+
 #img-list {
 	width: 70px;
 }
